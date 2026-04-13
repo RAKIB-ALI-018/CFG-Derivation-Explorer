@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CFG Derivation Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet" />
+    <style>
+        /* ── Reset & Base ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #f1f5f9;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --border-focus: #94a3b8;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --text-faint: #94a3b8;
+            --primary: #0f766e;
+            /* teal-700 */
+            --primary-fg: #ffffff;
+            --primary-h: #0d6b64;
+            --accent: #f0fdf4;
+            --accent-bdr: #86efac;
+            --step-active: #f0fdf9;
+            --step-act-bdr: #5eead4;
+            --badge-nt: #dbeafe;
+            /* blue-100 */
+            --badge-nt-bdr: #93c5fd;
+            --badge-t: #dcfce7;
+            /* green-100 */
+            --badge-t-bdr: #86efac;
+            --badge-eps: #fef9c3;
+            /* yellow-100 */
+            --badge-eps-bdr: #fde047;
+            --badge-hi: #fef3c7;
+            /* amber */
+            --badge-hi-bdr: #fcd34d;
+            --node-nt: #dbeafe;
+            --node-nt-str: #3b82f6;
+            --node-t: #dcfce7;
+            --node-t-str: #22c55e;
+            --node-eps: #fce7f3;
+            --node-eps-str: #ec4899;
+            --node-hi: #fef3c7;
+            --node-hi-str: #f59e0b;
+            --edge-color: #94a3b8;
+            --radius: 0.5rem;
+            --shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 1px 2px rgba(0, 0, 0, .06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, .07), 0 2px 4px -1px rgba(0, 0, 0, .05);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        /* ── App wrapper ── */
+        .app {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 32px 16px 64px;
+        }
+
+        /* ── Header ── */
+        .app-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .app-header .icon {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .app-header .icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: white;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .app-header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -.02em;
+        }
+
+        .app-header p {
+            font-size: .8rem;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: .85rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .card-header .card-title {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .card-header .card-title svg {
+            width: 14px;
+            height: 14px;
+            stroke: var(--primary);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        .card-body.collapsed {
+            display: none;
+        }
+
+        /* ── Grammar textarea ── */
+        .grammar-textarea {
+            width: 100%;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .82rem;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg);
+            color: var(--text);
+            resize: vertical;
+            min-height: 90px;
+            outline: none;
+            transition: border-color .15s;
+            line-height: 1.6;
+        }
+
+        .grammar-textarea:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(148, 163, 184, .15);
+        }
+
+        /* ── Label row ── */
+        .form-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .form-label {
+            font-size: .78rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .form-input {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .82rem;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text);
+            width: 64px;
+            outline: none;
+            transition: border-color .15s;
+        }
+
+        .form-input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(148, 163, 184, .15);
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: .78rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            transition: background .12s, border-color .12s, transform .08s;
+            white-space: nowrap;
+            user-select: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn:hover {
+            background: var(--bg);
+        }
+
+        .btn:active {
+            transform: scale(.97);
+        }
+
+        .btn svg {
+            width: 13px;
+            height: 13px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: var(--primary-fg);
+            border-color: var(--primary);
+            padding: 8px 18px;
+            font-size: .82rem;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-h);
+            border-color: var(--primary-h);
+        }
+
+        .btn-play {
+            background: var(--primary);
+            color: var(--primary-fg);
+            border-color: var(--primary);
+        }
+
+        .btn-play:hover {
+            background: var(--primary-h);
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: .75rem;
+        }
+
+        /* ── Target + Derivation row ── */
+        .target-row {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .target-row .flex-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .target-row .flex-group label {
+            font-size: .75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .target-input {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .85rem;
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text);
+            width: 220px;
+            outline: none;
+            transition: border-color .15s;
+        }
+
+        .target-input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(148, 163, 184, .15);
+        }
+
+        .deriv-select {
+            font-size: .82rem;
+            padding: 7px 28px 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text);
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .deriv-select:focus {
+            border-color: var(--border-focus);
+        }
+
+        /* ── Status banner ── */
+        .status-banner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            border: 1px solid var(--accent-bdr);
+            background: var(--accent);
+            font-size: .82rem;
+            color: #166534;
+            margin-bottom: 16px;
+        }
+
+        .status-banner.error {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #991b1b;
+        }
+
+        .status-banner.hidden {
+            display: none;
+        }
+
+        .status-banner svg {
+            width: 15px;
+            height: 15px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+
+        /* ── Animation controls ── */
+        .anim-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .anim-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .anim-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speed-label {
+            font-size: .75rem;
+            color: var(--text-muted);
+        }
+
+        .speed-select {
+            font-size: .75rem;
+            padding: 4px 24px 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 6px center;
+            cursor: pointer;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .step-info {
+            padding: 8px 16px;
+            font-size: .78rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .step-info strong {
+            color: var(--text);
+        }
+
+        /* ── Derivation Steps ── */
+        .steps-list {
+            padding: 8px 0;
+        }
+
+        .step-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: 7px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .8rem;
+            border-left: 3px solid transparent;
+            transition: background .12s;
+        }
+
+        .step-row:hover {
+            background: var(--bg);
+        }
+
+        .step-row.active {
+            background: var(--step-active);
+            border-left-color: var(--step-act-bdr);
+            font-weight: 600;
+        }
+
+        .step-num {
+            color: var(--text-muted);
+            font-size: .72rem;
+            margin-right: 10px;
+            min-width: 20px;
+        }
+
+        .step-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .step-rule {
+            color: var(--text-faint);
+            font-size: .72rem;
+            white-space: nowrap;
+            margin-left: 12px;
+            flex-shrink: 0;
+        }
+
+        /* tokens */
+        .tok {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: .78rem;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid;
+        }
+
+        .tok-nt {
+            background: var(--badge-nt);
+            border-color: var(--badge-nt-bdr);
+            color: #1d4ed8;
+        }
+
+        .tok-t {
+            background: var(--badge-t);
+            border-color: var(--badge-t-bdr);
+            color: #166534;
+        }
+
+        .tok-eps {
+            background: var(--badge-eps);
+            border-color: var(--badge-eps-bdr);
+            color: #713f12;
+        }
+
+        .tok-hi {
+            background: var(--badge-hi);
+            border-color: var(--badge-hi-bdr);
+            color: #92400e;
+            font-weight: 700;
+        }
+
+        /* ── Parse Tree SVG Canvas ── */
+        .tree-canvas {
+            overflow-x: auto;
+            padding: 20px 12px;
+            min-height: 200px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .tree-canvas svg {
+            display: block;
+            overflow: visible;
+        }
+
+        /* SVG node styles */
+        .svg-node-circle {
+            stroke-width: 1.5;
+        }
+
+        .svg-node-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+
+        .svg-edge {
+            stroke: var(--edge-color);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        /* ── Chevron toggle ── */
+        .chevron {
+            width: 14px;
+            height: 14px;
+            stroke: var(--text-muted);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform .2s;
+            flex-shrink: 0;
+        }
+
+        .chevron.open {
+            transform: rotate(180deg);
+        }
+
+        /* ── Preset buttons ── */
+        .preset-row {
+            display: flex;
+            gap: 7px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* ── Empty/placeholder ── */
+        .tree-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+            color: var(--text-faint);
+            font-size: .82rem;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .tree-placeholder svg {
+            width: 36px;
+            height: 36px;
+            stroke: var(--text-faint);
+            fill: none;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            .target-input {
+                width: 100%;
+            }
+
+            .target-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .anim-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeSlideIn .25s ease-out forwards;
+        }
+
+        @keyframes nodePop {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            70% {
+                transform: scale(1.15);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .node-pop {
+            animation: nodePop .28s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+
+        <!-- ── Header ── -->
+        <div class="app-header">
+            <div class="icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                </svg>
+            </div>
+            <div>
+                <h1>CFG Derivation Explorer</h1>
+                <p>Top-down parse tree visualizer for context-free grammars</p>
+            </div>
+        </div>
+
+        <!-- ── Grammar Editor Card ── -->
+        <div class="card">
+            <div class="card-header" id="grammarToggle">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Grammar Editor
+                </div>
+                <svg class="chevron open" id="grammarChevron" viewBox="0 0 24 24">
+                    <polyline points="6 9 12 15 18 9" />
+                </svg>
+            </div>
+            <div class="card-body" id="grammarBody">
+                <textarea class="grammar-textarea" id="grammarInput" rows="4"
+                    placeholder="S → a S a | b S b | a | b | ε"></textarea>
+                <div class="form-row">
+                    <span class="form-label">Start symbol:</span>
+                    <input class="form-input" id="startSymbol" type="text" value="S" maxlength="10" />
+                    <div class="preset-row" style="margin-top:0;">
+                        <button class="btn btn-sm" onclick="loadPreset('palindrome')">Load Palindrome</button>
+                        <button class="btn btn-sm" onclick="loadPreset('expression')">Load Expression</button>
+                        <button class="btn btn-sm" onclick="loadPreset('anbn')">Load aⁿbⁿ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Target String + Generate ── -->
+        <div class="card">
+            <div class="card-body">
+                <div class="target-row">
+                    <div class="flex-group" style="flex:1">
+                        <label for="targetInput">Target String</label>
+                        <input class="target-input" id="targetInput" type="text" value="abba"
+                            placeholder="e.g. abba or ε for empty" />
+                    </div>
+                    <div class="flex-group">
+                        <label for="derivSelect">Derivation</label>
+                        <select class="deriv-select" id="derivSelect">
+                            <option value="LMD">Leftmost (LMD)</option>
+                            <option value="RMD">Rightmost (RMD)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="handleGenerate()">Generate &amp; Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Status banner ── -->
+        <div class="status-banner hidden" id="statusBanner">
+            <svg viewBox="0 0 24 24" id="statusIcon">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            <span id="statusText"></span>
+        </div>
+
+        <!-- ── Animation Controls Card ── -->
+        <div class="card" id="animCard" style="display:none;">
+            <div class="anim-controls">
+                <div class="anim-left">
+                    <button class="btn btn-sm" id="prevBtn" onclick="stepPrev()">
+                        <svg viewBox="0 0 24 24">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                        Prev
+                    </button>
+                    <button class="btn btn-play btn-sm" id="playBtn" onclick="togglePlay()">
+                        <svg viewBox="0 0 24 24" id="playIcon">
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                        <span id="playLabel">Play</span>
+                    </button>
+                    <button class="btn btn-sm" id="nextBtn" onclick="stepNext()">
+                        Next
+                        <svg viewBox="0 0 24 24">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                    <button class="btn btn-sm" onclick="handleReset()">
+                        <svg viewBox="0 0 24 24">
+                            <polyline points="1 4 1 10 7 10" />
+                            <path d="M3.51 15a9 9 0 1 0 .49-3.86" />
+                        </svg>
+                        Reset
+                    </button>
+                </div>
+                <div class="anim-right">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    <span class="speed-label">Speed:</span>
+                    <select class="speed-select" id="speedSelect">
+                        <option value="1200">0.5×</option>
+                        <option value="800" selected>1×</option>
+                        <option value="500">1.5×</option>
+                        <option value="300">2×</option>
+                    </select>
+                    <svg class="chevron" id="stepsChevron" onclick="toggleStepsPanel()" style="cursor:pointer;"
+                        viewBox="0 0 24 24">
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                </div>
+            </div>
+            <div class="step-info" id="stepInfo">Step 0/0</div>
+        </div>
+
+        <!-- ── Derivation Steps Card ── -->
+        <div class="card" id="stepsCard" style="display:none;">
+            <div class="card-header" style="cursor:default;">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                    </svg>
+                    Derivation Steps
+                </div>
+            </div>
+            <div id="stepsList" class="steps-list"></div>
+        </div>
+
+        <!-- ── Parse Tree Card ── -->
+        <div class="card" id="treeCard">
+            <div class="card-header" style="cursor:default;">
+                <div class="card-title">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    Parse Tree
+                </div>
+            </div>
+            <div class="tree-canvas" id="treeCanvas">
+                <div class="tree-placeholder" id="treePlaceholder">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2v6" />
+                        <path d="M12 22v-6" />
+                        <path d="M4.93 4.93l4.24 4.24" />
+                        <path d="M14.83 14.83l4.24 4.24" />
+                        <path d="M2 12h6" />
+                        <path d="M22 12h-6" />
+                        <path d="M4.93 19.07l4.24-4.24" />
+                        <path d="M14.83 9.17l4.24-4.24" />
+                    </svg>
+                    <span>Enter a grammar and target string, then click <strong>Generate &amp; Reset</strong> to
+                        visualize the parse tree.</span>
+                </div>
+                <svg id="treeSvg" style="display:none;"></svg>
+            </div>
+        </div>
+
+    </div><!-- /app -->
+
+    <script>
+        'use strict';
+
+        /* ══════════════════════════════════════════════════════
+           PRESETS
+        ══════════════════════════════════════════════════════ */
+        const PRESETS = {
+            palindrome: {
+                grammar: 'S → a S a | b S b | a | b | ε',
+                start: 'S',
+                target: 'abba'
+            },
+            expression: {
+                grammar: "E → E + T | T\nT → T * F | F\nF → ( E ) | id",
+                start: 'E',
+                target: 'id + id'
+            },
+            anbn: {
+                grammar: 'S → a S b | ε',
+                start: 'S',
+                target: 'aabb'
+            }
+        };
+
+        function loadPreset(name) {
+            const p = PRESETS[name];
+            if (!p) return;
+            document.getElementById('grammarInput').value = p.grammar;
+            document.getElementById('startSymbol').value = p.start;
+            document.getElementById('targetInput').value = p.target;
+            resetState();
+        }
+
+        /* ══════════════════════════════════════════════════════
+           GRAMMAR PARSER
+        ══════════════════════════════════════════════════════ */
+        const isNT = s => /^[A-Z][A-Za-z0-9_']*$/.test(s);
+        const isEps = s => s === 'ε' || s === 'eps' || s === 'epsilon' || s === 'e';
+
+        function parseGrammar(text, startSym) {
+            const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const rules = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                // Support → -> :
+                const arrowMatch = line.match(/^([A-Z][A-Za-z0-9_']*)\s*(?:→|->|:)\s*(.+)$/);
+                if (!arrowMatch) return { error: `Line ${i + 1}: expected "NT → production | ..."` };
+
+                const lhs = arrowMatch[1].trim();
+                const rhsPart = arrowMatch[2].trim();
+                const alts = rhsPart.split('|').map(a => a.trim());
+
+                for (const alt of alts) {
+                    if (!alt) continue;
+                    const normalized = alt === 'ε' || alt.toLowerCase() === 'eps' || alt.toLowerCase() === 'epsilon' ? 'ε' : alt;
+                    let rhs;
+                    if (normalized === 'ε') {
+                        rhs = ['ε'];
+                    } else {
+                        rhs = tokenizeRHS(normalized);
+                        if (rhs === null) return { error: `Line ${i + 1}: cannot tokenise "${alt}"` };
+                    }
+                    rules.push({ lhs, rhs });
+                }
+            }
+
+            if (!rules.length) return { error: 'No production rules found.' };
+            if (!rules.some(r => r.lhs === startSym)) return { error: `Start symbol '${startSym}' not found.` };
+            return { rules, error: null };
+        }
+
+        function tokenizeRHS(str) {
+            const tokens = [];
+            let i = 0;
+            while (i < str.length) {
+                if (/\s/.test(str[i])) { i++; continue; }
+                if (str[i] === 'ε') { tokens.push('ε'); i++; continue; }
+                // Multi-char NT: uppercase letter optionally followed by lowercase/digits/prime/underscore
+                if (/[A-Z]/.test(str[i])) {
+                    let j = i + 1;
+                    while (j < str.length && /[A-Za-z0-9_']/.test(str[j])) j++;
+                    tokens.push(str.slice(i, j));
+                    i = j;
+                    continue;
+                }
+                // Single terminal character
+                if (/[a-z0-9+\-*/().,_!?=<>^%&;:[\]{}]/.test(str[i])) {
+                    tokens.push(str[i]); i++; continue;
+                }
+                return null; // unknown character
+            }
+            return tokens.length ? tokens : null;
+        }
+
+        /* ══════════════════════════════════════════════════════
+           MIN-LENGTH HEURISTIC (pruning)
+        ══════════════════════════════════════════════════════ */
+        let _minLenCache = new Map();
+
+        function getMinLen(nt, rulesMap) {
+            if (_minLenCache.has(nt)) return _minLenCache.get(nt);
+            _minLenCache.set(nt, Infinity); // cycle guard
+            const ruleSet = rulesMap.get(nt) || [];
+            let best = Infinity;
+            for (const rule of ruleSet) {
+                let len = 0, ok = true;
+                for (const sym of rule.rhs) {
+                    if (sym === 'ε') continue;
+                    if (isNT(sym)) {
+                        const v = getMinLen(sym, rulesMap);
+                        if (v === Infinity) { ok = false; break; }
+                        len += v;
+                    } else {
+                        len += 1;
+                    }
+                }
+                if (ok) best = Math.min(best, len);
+            }
+            _minLenCache.set(nt, best);
+            return best;
+        }
+
+        function formMinLen(form, rulesMap) {
+            let total = 0;
+            for (const sym of form) {
+                if (sym === 'ε') continue;
+                if (isNT(sym)) {
+                    const v = getMinLen(sym, rulesMap);
+                    if (v === Infinity) return Infinity;
+                    total += v;
+                } else {
+                    total += 1;
+                }
+            }
+            return total;
+        }
+
+        /* ══════════════════════════════════════════════════════
+           DERIVATION ENGINE
+           Core fix: sententialToString filters NTs AND ε;
+           visited-set replaced by full (form+target) memoisation.
+        ══════════════════════════════════════════════════════ */
+
+        // Only count terminal characters (not NTs, not ε)
+        function termStr(form) {
+            return form.filter(s => !isNT(s) && s !== 'ε').join('');
+        }
+
+        function termPrefix(form) {
+            const out = [];
+            for (const s of form) {
+                if (isNT(s)) break;
+                if (s !== 'ε') out.push(s);
+            }
+            return out.join('');
+        }
+
+        function termSuffix(form) {
+            const out = [];
+            for (let i = form.length - 1; i >= 0; i--) {
+                if (isNT(form[i])) break;
+                if (form[i] !== 'ε') out.push(form[i]);
+            }
+            return out.reverse().join('');
+        }
+
+        let _deriveMemo = new Map();
+
+        function derive(form, target, rules, mode, depth, rulesMap) {
+            // Hard limits
+            if (depth > 50 || form.length > 60) return null;
+
+            // Terminal overrun
+            if (termStr(form).length > target.length) return null;
+
+            // Prefix / suffix pruning
+            const pref = termPrefix(form);
+            if (!target.startsWith(pref)) return null;
+
+            const suff = termSuffix(form);
+            if (!target.endsWith(suff)) return null;
+
+            // Min-len pruning
+            if (formMinLen(form, rulesMap) > target.length) return null;
+
+            // Memoisation — keyed on (form, target, mode)
+            const key = form.join('\x00') + '\x01' + target + '\x01' + mode;
+            if (_deriveMemo.has(key)) return _deriveMemo.get(key);
+            _deriveMemo.set(key, null); // in-progress sentinel (cycle guard)
+
+            // Base case: no NTs remain
+            if (!form.some(isNT)) {
+                const res = termStr(form) === target ? { steps: [form], ruleSeq: [] } : null;
+                _deriveMemo.set(key, res);
+                return res;
+            }
+
+            // Pick which NT to expand
+            const ntPos = [];
+            for (let i = 0; i < form.length; i++) if (isNT(form[i])) ntPos.push(i);
+            const pos = mode === 'LMD' ? ntPos[0] : ntPos[ntPos.length - 1];
+            const nt = form[pos];
+
+            const applicable = rules.filter(r => r.lhs === nt);
+
+            // Sort: ε last; shorter RHS first (avoids premature collapse)
+            applicable.sort((a, b) => {
+                const ae = a.rhs[0] === 'ε', be = b.rhs[0] === 'ε';
+                if (ae && !be) return 1;
+                if (!ae && be) return -1;
+                return a.rhs.length - b.rhs.length;
+            });
+
+            for (const rule of applicable) {
+                const replacement = rule.rhs[0] === 'ε' ? [] : rule.rhs;
+                const newForm = [...form.slice(0, pos), ...replacement, ...form.slice(pos + 1)];
+                if (newForm.length > 60) continue;
+
+                const sub = derive(newForm, target, rules, mode, depth + 1, rulesMap);
+                if (sub) {
+                    const res = {
+                        steps: [form, ...sub.steps],
+                        ruleSeq: [{ nth: ntPos.indexOf(pos), rule }, ...sub.ruleSeq]
+                    };
+                    _deriveMemo.set(key, res);
+                    return res;
+                }
+            }
+
+            return null; // memo stays null
+        }
+
+        /* ══════════════════════════════════════════════════════
+           PARSE-TREE BUILDER (mirrors derivation into a node tree)
+        ══════════════════════════════════════════════════════ */
+        function makeNode(sym) {
+            return { sym, isNT: isNT(sym), expanded: false, children: [] };
+        }
+
+        function cloneNode(n) {
+            return JSON.parse(JSON.stringify(n));
+        }
+
+        function findNthUnexpandedNT(node, n, ctr) {
+            if (!node.isNT) return null;
+            if (!node.expanded) {
+                if (ctr.val === n) return node;
+                ctr.val++;
+                return null;
+            }
+            for (const child of node.children) {
+                const found = findNthUnexpandedNT(child, n, ctr);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function buildTrees(startSym, ruleSeq) {
+            const trees = [];
+            const root = makeNode(startSym);
+            trees.push(cloneNode(root));
+
+            for (const item of ruleSeq) {
+                const ctr = { val: 0 };
+                const node = findNthUnexpandedNT(root, item.nth, ctr);
+                if (node) {
+                    node.expanded = true;
+                    node.children = item.rule.rhs[0] === 'ε'
+                        ? [{ sym: 'ε', isNT: false, expanded: true, children: [] }]
+                        : item.rule.rhs.map(makeNode);
+                }
+                trees.push(cloneNode(root));
+            }
+            return trees;
+        }
+
+        /* ══════════════════════════════════════════════════════
+           SVG PARSE TREE RENDERER
+        ══════════════════════════════════════════════════════ */
+        const NODE_R = 20;
+        const H_UNIT = 50;
+        const V_GAP = 68;
+
+        function leafCount(node) {
+            if (!node.children || !node.children.length) return 1;
+            return node.children.reduce((s, c) => s + leafCount(c), 0);
+        }
+
+        function layoutNode(node, depth, leftOffset) {
+            const w = leafCount(node);
+            node._x = leftOffset + (w * H_UNIT) / 2;
+            node._y = depth * V_GAP + NODE_R + 20;
+            let childLeft = leftOffset;
+            for (const child of (node.children || [])) {
+                const cw = leafCount(child);
+                layoutNode(child, depth + 1, childLeft);
+                childLeft += cw * H_UNIT;
+            }
+        }
+
+        function collectBounds(node, b) {
+            b.minX = Math.min(b.minX, node._x);
+            b.maxX = Math.max(b.maxX, node._x);
+            b.maxY = Math.max(b.maxY, node._y);
+            for (const c of (node.children || [])) collectBounds(c, b);
+        }
+
+        function nodeColor(node, isHighlighted) {
+            if (isHighlighted) return { fill: '#fef3c7', stroke: '#f59e0b', text: '#92400e' };
+            if (node.sym === 'ε') return { fill: '#fce7f3', stroke: '#ec4899', text: '#9d174d' };
+            if (node.isNT) return { fill: '#dbeafe', stroke: '#3b82f6', text: '#1e40af' };
+            return { fill: '#dcfce7', stroke: '#22c55e', text: '#14532d' };
+        }
+
+        function renderSVGTree(svgEl, root, highlightedSym) {
+            svgEl.innerHTML = '';
+            if (!root) return;
+
+            layoutNode(root, 0, 0);
+            const b = { minX: Infinity, maxX: -Infinity, maxY: -Infinity };
+            collectBounds(root, b);
+
+            const pad = 32;
+            const offX = pad - b.minX + NODE_R;
+            const W = Math.max(400, b.maxX - b.minX + NODE_R * 2 + pad * 2);
+            const H = Math.max(160, b.maxY + NODE_R + pad * 2);
+
+            svgEl.setAttribute('width', W);
+            svgEl.setAttribute('height', H);
+            svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+            const ns = 'http://www.w3.org/2000/svg';
+
+            // Draw edges first
+            function drawEdges(node) {
+                const px = node._x + offX, py = node._y;
+                for (const child of (node.children || [])) {
+                    const cx = child._x + offX, cy = child._y;
+                    const line = document.createElementNS(ns, 'line');
+                    line.setAttribute('x1', px);
+                    line.setAttribute('y1', py + NODE_R * 0.7);
+                    line.setAttribute('x2', cx);
+                    line.setAttribute('y2', cy - NODE_R * 0.7);
+                    line.setAttribute('stroke', '#94a3b8');
+                    line.setAttribute('stroke-width', '1.5');
+                    svgEl.appendChild(line);
+                    drawEdges(child);
+                }
+            }
+
+            // Draw nodes
+            function drawNode(node) {
+                const cx = node._x + offX, cy = node._y;
+                const isHi = highlightedSym && node.sym === highlightedSym && node.isNT && !node.expanded;
+                const colors = nodeColor(node, isHi);
+
+                const circle = document.createElementNS(ns, 'circle');
+                circle.setAttribute('cx', cx);
+                circle.setAttribute('cy', cy);
+                circle.setAttribute('r', NODE_R);
+                circle.setAttribute('fill', colors.fill);
+                circle.setAttribute('stroke', colors.stroke);
+                circle.setAttribute('stroke-width', '1.8');
+                svgEl.appendChild(circle);
+
+                const text = document.createElementNS(ns, 'text');
+                text.setAttribute('x', cx);
+                text.setAttribute('y', cy + 1);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'central');
+                text.setAttribute('fill', colors.text);
+                text.setAttribute('font-size', node.sym.length > 2 ? '9' : '12');
+                text.setAttribute('font-weight', '600');
+                text.setAttribute('font-family', "'JetBrains Mono', monospace");
+                text.textContent = node.sym;
+                svgEl.appendChild(text);
+
+                for (const child of (node.children || [])) drawNode(child);
+            }
+
+            drawEdges(root);
+            drawNode(root);
+        }
+
+        /* ══════════════════════════════════════════════════════
+           STEPS UI
+        ══════════════════════════════════════════════════════ */
+        function renderStepToken(sym, isExpanding) {
+            const span = document.createElement('span');
+            if (sym === 'ε') {
+                span.className = 'tok tok-eps';
+                span.textContent = 'ε';
+            } else if (isNT(sym)) {
+                span.className = isExpanding ? 'tok tok-hi' : 'tok tok-nt';
+                span.textContent = sym;
+            } else {
+                span.className = 'tok tok-t';
+                span.textContent = sym;
+            }
+            return span;
+        }
+
+        function buildStepsHTML(steps, ruleSeq, activeStep) {
+            const list = document.getElementById('stepsList');
+            list.innerHTML = '';
+
+            steps.forEach((form, i) => {
+                const row = document.createElement('div');
+                row.className = 'step-row' + (i === activeStep ? ' active' : '');
+                row.id = `step-row-${i}`;
+
+                const numSpan = document.createElement('span');
+                numSpan.className = 'step-num';
+                numSpan.textContent = i + '.';
+                row.appendChild(numSpan);
+
+                const formDiv = document.createElement('div');
+                formDiv.className = 'step-form';
+
+                // Figure out which symbol is being expanded at this step
+                // (it's the NT expanded in the NEXT step)
+                let expandingIdx = -1;
+                if (i < ruleSeq.length) {
+                    // Find which NT position is being expanded (mode-dependent)
+                    // We can infer from comparing form[i] vs form[i+1]
+                    // Simpler: the ruleSeq[i].rule.lhs tells us what was expanded
+                    const lhs = ruleSeq[i]?.rule?.lhs;
+                    if (lhs) {
+                        // Find the NT position matching nth in the current form
+                        const nth = ruleSeq[i]?.nth ?? 0;
+                        let count = 0;
+                        for (let j = 0; j < form.length; j++) {
+                            if (form[j] === lhs) {
+                                if (count === nth) { expandingIdx = j; break; }
+                                count++;
+                            }
+                        }
+                    }
+                }
+
+                form.forEach((sym, j) => {
+                    formDiv.appendChild(renderStepToken(sym, j === expandingIdx));
+                });
+                row.appendChild(formDiv);
+
+                if (ruleSeq[i]) {
+                    const ruleSpan = document.createElement('span');
+                    ruleSpan.className = 'step-rule';
+                    const r = ruleSeq[i].rule;
+                    ruleSpan.textContent = `[${r.lhs} → ${r.rhs.join(' ')}]`;
+                    row.appendChild(ruleSpan);
+                }
+
+                list.appendChild(row);
+            });
+
+            // Scroll active step into view
+            const activeEl = document.getElementById(`step-row-${activeStep}`);
+            if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+
+        /* ══════════════════════════════════════════════════════
+           APP STATE
+        ══════════════════════════════════════════════════════ */
+        let derivSteps = [];   // array of sentential forms
+        let derivTrees = [];   // parallel tree snapshots
+        let derivRules = [];   // ruleSeq from derive()
+        let currentStep = 0;
+        let isPlaying = false;
+        let playTimer = null;
+
+        function resetState() {
+            derivSteps = []; derivTrees = []; derivRules = [];
+            currentStep = 0;
+            stopPlay();
+            document.getElementById('animCard').style.display = 'none';
+            document.getElementById('stepsCard').style.display = 'none';
+            document.getElementById('statusBanner').className = 'status-banner hidden';
+            document.getElementById('treePlaceholder').style.display = '';
+            document.getElementById('treeSvg').style.display = 'none';
+            document.getElementById('stepsList').innerHTML = '';
+        }
+
+        function showStatus(msg, isError) {
+            const banner = document.getElementById('statusBanner');
+            banner.className = 'status-banner fade-in' + (isError ? ' error' : '');
+            document.getElementById('statusText').textContent = msg;
+            // swap icon for error
+            const icon = document.getElementById('statusIcon');
+            if (isError) {
+                icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+            } else {
+                icon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+            }
+        }
+
+        function refreshDisplay() {
+            // Step info line
+            const form = derivSteps[currentStep] || [];
+            const displayStr = form.filter(s => s !== 'ε').join(' ') || 'ε';
+            document.getElementById('stepInfo').innerHTML =
+                `Step ${currentStep}/${derivSteps.length - 1} &nbsp;•&nbsp; <strong>${displayStr}</strong>`;
+
+            // Derivation steps list
+            buildStepsHTML(derivSteps, derivRules, currentStep);
+
+            // Parse tree
+            const treeRoot = derivTrees[currentStep];
+            if (treeRoot) {
+                // Determine highlighted NT (the one being expanded)
+                const lhs = derivRules[currentStep]?.rule?.lhs || null;
+                renderSVGTree(document.getElementById('treeSvg'), treeRoot, lhs);
+                document.getElementById('treeSvg').style.display = '';
+                document.getElementById('treePlaceholder').style.display = 'none';
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════
+           GENERATE
+        ══════════════════════════════════════════════════════ */
+        function handleGenerate() {
+            resetState();
+
+            const grammarText = document.getElementById('grammarInput').value.trim();
+            const startSym = document.getElementById('startSymbol').value.trim();
+            const targetRaw = document.getElementById('targetInput').value.trim();
+            const mode = document.getElementById('derivSelect').value;
+
+            if (!grammarText) { showStatus('Please enter a grammar.', true); return; }
+            if (!startSym) { showStatus('Please enter a start symbol.', true); return; }
+
+            const parsed = parseGrammar(grammarText, startSym);
+            if (parsed.error) { showStatus('Grammar error: ' + parsed.error, true); return; }
+
+            const target = (targetRaw === 'ε' || targetRaw === '') ? '' : targetRaw;
+
+            // Build rulesMap for heuristics
+            const rulesMap = new Map();
+            for (const r of parsed.rules) {
+                if (!rulesMap.has(r.lhs)) rulesMap.set(r.lhs, []);
+                rulesMap.get(r.lhs).push(r);
+            }
+
+            _deriveMemo.clear();
+            _minLenCache.clear();
+
+            const result = derive([startSym], target, parsed.rules, mode, 0, rulesMap);
+
+            if (!result) {
+                showStatus(`Cannot derive "${targetRaw || 'ε'}" from this grammar.`, true);
+                return;
+            }
+
+            derivSteps = result.steps;
+            derivRules = result.ruleSeq;
+            derivTrees = buildTrees(startSym, result.ruleSeq);
+            currentStep = 0;
+
+            showStatus(`Derivation found! ${result.steps.length - 1} step${result.steps.length - 1 !== 1 ? 's' : ''}. Use controls to animate.`, false);
+
+            document.getElementById('animCard').style.display = '';
+            document.getElementById('stepsCard').style.display = '';
+
+            refreshDisplay();
+        }
+
+        /* ══════════════════════════════════════════════════════
+           PLAYBACK CONTROLS
+        ══════════════════════════════════════════════════════ */
+        function stepPrev() {
+            stopPlay();
+            if (currentStep > 0) { currentStep--; refreshDisplay(); }
+        }
+
+        function stepNext() {
+            stopPlay();
+            if (currentStep < derivSteps.length - 1) { currentStep++; refreshDisplay(); }
+        }
+
+        function handleReset() {
+            stopPlay();
+            currentStep = 0;
+            if (derivSteps.length) refreshDisplay();
+        }
+
+        function stopPlay() {
+            if (playTimer) { clearInterval(playTimer); playTimer = null; }
+            isPlaying = false;
+            document.getElementById('playIcon').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+            document.getElementById('playLabel').textContent = 'Play';
+        }
+
+        function startPlay() {
+            if (!derivSteps.length) return;
+            if (currentStep >= derivSteps.length - 1) currentStep = 0;
+            isPlaying = true;
+            document.getElementById('playIcon').innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+            document.getElementById('playLabel').textContent = 'Pause';
+
+            const ms = parseInt(document.getElementById('speedSelect').value, 10);
+            playTimer = setInterval(() => {
+                if (currentStep < derivSteps.length - 1) {
+                    currentStep++;
+                    refreshDisplay();
+                } else {
+                    stopPlay();
+                }
+            }, ms);
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay(); else startPlay();
+        }
+
+        /* ══════════════════════════════════════════════════════
+           GRAMMAR EDITOR COLLAPSE
+        ══════════════════════════════════════════════════════ */
+        let grammarCollapsed = false;
+        document.getElementById('grammarToggle').addEventListener('click', () => {
+            grammarCollapsed = !grammarCollapsed;
+            document.getElementById('grammarBody').classList.toggle('collapsed', grammarCollapsed);
+            document.getElementById('grammarChevron').classList.toggle('open', !grammarCollapsed);
+        });
+
+        let stepsCollapsed = false;
+        function toggleStepsPanel() {
+            stepsCollapsed = !stepsCollapsed;
+            document.getElementById('stepsCard').style.display = stepsCollapsed ? 'none' : '';
+            document.getElementById('stepsChevron').classList.toggle('open', !stepsCollapsed);
+        }
+
+        /* ══════════════════════════════════════════════════════
+           KEYBOARD SHORTCUTS
+        ══════════════════════════════════════════════════════ */
+        document.addEventListener('keydown', e => {
+            if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+            if (e.key === 'ArrowLeft') { e.preventDefault(); stepPrev(); }
+            if (e.key === 'ArrowRight') { e.preventDefault(); stepNext(); }
+            if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+        });
+
+        /* ══════════════════════════════════════════════════════
+           INIT — load palindrome example on startup
+        ══════════════════════════════════════════════════════ */
+        window.addEventListener('DOMContentLoaded', () => {
+            loadPreset('palindrome');
+            // Auto-generate the default example
+            handleGenerate();
+        });
+    </script>
+</body>
+
+</html>
